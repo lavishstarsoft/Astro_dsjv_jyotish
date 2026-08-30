@@ -8,22 +8,32 @@ export const calculateChart = (req: Request, res: Response) => {
   try {
     const { date, time, lat, lon, timezoneOffset } = req.body;
 
-    // Basic parsing (assuming DD/MM/YYYY and HH:MM)
-    const [day, month, year] = date.split('/').map(Number);
+    if (!date || typeof date !== 'string' || !date.includes('/')) {
+      return res.status(400).json({ success: false, message: 'Invalid or missing date (expected DD/MM/YYYY)' });
+    }
 
-    // Parse time like "2:22 pm" or "14:22"
+    const [day, month, year] = date.split('/').map(Number);
+    if (!day || !month || !year) {
+      return res.status(400).json({ success: false, message: 'Date must be DD/MM/YYYY' });
+    }
+
+    // Parse time like "2:22 pm" or "14:22"; default to noon if missing
+    const timeStr = (typeof time === 'string' && time.trim()) ? time.trim() : '12:00';
     let hour = 0;
     let minute = 0;
-    if (time.toLowerCase().includes('pm') || time.toLowerCase().includes('am')) {
-      const parts = time.toLowerCase().replace('pm', '').replace('am', '').trim().split(':');
+    if (timeStr.toLowerCase().includes('pm') || timeStr.toLowerCase().includes('am')) {
+      const parts = timeStr.toLowerCase().replace('pm', '').replace('am', '').trim().split(':');
       hour = parseInt(parts[0]);
       minute = parseInt(parts[1] || '0');
-      if (time.toLowerCase().includes('pm') && hour !== 12) hour += 12;
-      if (time.toLowerCase().includes('am') && hour === 12) hour = 0;
+      if (timeStr.toLowerCase().includes('pm') && hour !== 12) hour += 12;
+      if (timeStr.toLowerCase().includes('am') && hour === 12) hour = 0;
     } else {
-      const parts = time.split(':');
+      const parts = timeStr.split(':');
       hour = parseInt(parts[0]);
       minute = parseInt(parts[1] || '0');
+    }
+    if (isNaN(hour) || isNaN(minute)) {
+      return res.status(400).json({ success: false, message: 'Time must be HH:MM or "H:MM am/pm"' });
     }
 
     const tz = timezoneOffset || 5.5;

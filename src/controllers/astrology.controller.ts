@@ -3,6 +3,7 @@ import { AstrologyEngine } from '../services/astrology/ephemeris';
 import { VargaEngine } from '../services/astrology/vargaEngine';
 import { PanchangamEngine } from '../services/astrology/panchangam';
 import { DashaEngine } from '../services/dasha/vimshottari';
+import { computeKuberaPada } from '../services/astrology/kuberaPada';
 
 export const calculateChart = (req: Request, res: Response) => {
   try {
@@ -119,6 +120,19 @@ export const calculateChart = (req: Request, res: Response) => {
       }
     }
 
+    // Kubera Pada — reuses moon longitude, ascendant sign, and existing planet
+    // longitudes; no duplicate astronomical calculation.
+    let kuberaPada: any = null;
+    try {
+      kuberaPada = computeKuberaPada({
+        moonLongitude: moonLong,
+        ascendantSign,
+        planets: planets.map(p => ({ name: p.name, longitude: p.longitude }))
+      });
+    } catch (kpErr) {
+      console.error('Kubera Pada calc error:', kpErr);
+    }
+
     res.status(200).json({
       success: true,
       data: {
@@ -132,7 +146,8 @@ export const calculateChart = (req: Request, res: Response) => {
         kragaSaram,
         dasha,
         currentDasha,
-        currentBhukti
+        currentBhukti,
+        kuberaPada
       }
     });
 

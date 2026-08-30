@@ -1,8 +1,7 @@
 import swisseph from 'swisseph';
-import path from 'path';
 
 // Optional: If you download exact ephemeris data files, you can point to them:
-// swisseph.swe_set_ephe_path(path.join(__dirname, '../../../../ephe'));
+// swisseph.swe_set_ephe_path('/absolute/path/to/ephe');
 
 export interface PlanetPosition {
   name: string;
@@ -94,37 +93,25 @@ export class AstrologyEngine {
     return siderealAscendant;
   }
 
-  static getBhavaPositions(julianDay: number, lat: number, lon: number, rasiPlanets: PlanetPosition[]): PlanetPosition[] {
-    swisseph.swe_set_sid_mode(swisseph.SE_SIDM_LAHIRI, 0, 0);
-    const houses = swisseph.swe_houses(julianDay, lat, lon, 'O') as any; // Porphyry (Sri Pati approx)
-    const ayanamsa = swisseph.swe_get_ayanamsa_ut(julianDay);
-    
-    // Normalize cusps to sidereal
-    const cusps = houses.house.map((c: number) => {
-      let sidCusp = c - ayanamsa;
-      if (sidCusp < 0) sidCusp += 360;
-      return sidCusp;
-    });
+  /**
+   * Bhava Chalita (Equal House method): each bhava is exactly 30 degrees
+   * starting from the Ascendant. A planet's bhava = floor((longitude - asc) / 30) + 1.
+   * For South Indian display, the planet is placed in the SIGN that owns that bhava
+   * (bhava N -> (N-1)th sign from the Ascendant sign).
+   * degreeInSign is preserved as the planet's actual rasi degree so users can still
+   * see the true position within its zodiac sign.
+   */
+  static getBhavaChalita(ascendantDegree: number, rasiPlanets: PlanetPosition[]): PlanetPosition[] {
+    const ascSign = Math.floor(ascendantDegree / 30) + 1;
 
-    const ascSign = Math.floor(cusps[0] / 30) + 1;
-
-    const romanNumerals = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
-    
-    const cuspBodies = cusps.map((c: number, i: number) => {
-      let visualSign = Math.floor(c / 30) + 1;
+    return rasiPlanets.map(p => {
+      const diff = ((p.longitude - ascendantDegree) % 360 + 360) % 360;
+      const bhavaNumber = Math.floor(diff / 30) + 1; // 1..12
+      const bhavaSign = ((ascSign - 1 + bhavaNumber - 1) % 12) + 1;
       return {
-        name: romanNumerals[i],
-        longitude: c,
-        latitude: 0,
-        speed: 0,
-        isRetrograde: false,
-        zodiacSign: visualSign,
-        degreeInSign: c % 30
+        ...p,
+        zodiacSign: bhavaSign
       };
     });
-
-    // In the standard reference Bhava Chalita, planets remain in their actual zodiac signs,
-    // and the cusps (Roman Numerals) indicate the house boundaries.
-    return [...cuspBodies, ...rasiPlanets];
   }
 }

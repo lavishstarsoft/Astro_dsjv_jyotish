@@ -49,9 +49,10 @@ export const calculateChart = (req: Request, res: Response) => {
     // Default Chennai coordinates if not provided (13.0827 N, 80.2707 E)
     const ascendantDegree = AstrologyEngine.getAscendant(julianDay, lat || 13.0827, lon || 80.2707);
     const ascendantSign = Math.floor(ascendantDegree / 30) + 1;
+    const ascendantDegreeInSign = ascendantDegree % 30;
 
-    // We keep bhavaPlanets for future use if needed, but the main focus is Vargas now
-    const bhavaPlanets = AstrologyEngine.getBhavaPositions(julianDay, lat || 13.0827, lon || 80.2707, planets);
+    // Bhava Chalita (Equal House): planets grouped by the bhava they actually occupy
+    const bhavaPlanets = AstrologyEngine.getBhavaChalita(ascendantDegree, planets);
 
     // Calculate all 16 Vargas
     const vargas = VargaEngine.getVargas(planets, ascendantDegree);
@@ -61,6 +62,7 @@ export const calculateChart = (req: Request, res: Response) => {
       data: {
         ascendantSign,
         ascendantDegree,
+        ascendantDegreeInSign,
         planets,
         bhavaPlanets,
         vargas
